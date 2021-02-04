@@ -8,7 +8,7 @@ import sys
 import subprocess
 import platform
 
-VERSION = '0.2.9'
+VERSION = '0.2.11'
 PKG_DIR = 'pyroaring'
 
 PLATFORM_WINDOWS = (platform.system() == 'Windows')
@@ -92,8 +92,13 @@ else:
     if 'ARCHI' in os.environ:
         if os.environ['ARCHI'] != "generic":
             compile_args.extend(['-march=%s' % os.environ['ARCHI']])
-    else:
-        compile_args.append('-march=native')
+    # The '-march=native' flag is not universally allowed. In particular, it
+    # will systematically fail on aarch64 systems (like the new Apple M1 systems). It
+    # also creates troubles under macOS with pip installs and requires ugly workarounds.
+    # The best way to handle people who want to use -march=native is to ask them
+    # to pass ARCHI=native to their build process.
+    #else:
+    #    compile_args.append('-march=native')
 
 filename = os.path.join(PKG_DIR, 'pyroaring.%s' % ext)
 pyroaring = Extension('pyroaring',
@@ -125,5 +130,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
 )
