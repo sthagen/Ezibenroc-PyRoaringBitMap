@@ -8,10 +8,14 @@
 name: Build and upload wheels
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - '[0-9]+\.[0-9]+\.[0-9]+'
-      - '[0-9]+\.[0-9]+\.[0-9]+\.dev[0-9]+'
+    branches:
+      - master
+  release:
+    types:
+      - released
+      - prereleased
 
 jobs:
 
@@ -24,7 +28,7 @@ jobs:
       - name: Build sdist
         run: pipx run build --sdist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: dist/*.tar.gz
 
@@ -61,7 +65,7 @@ jobs:
           CIBW_TEST_SKIP: "*-win_arm64"
           CIBW_BUILD_FRONTEND: "build"
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
 
@@ -69,7 +73,7 @@ jobs:
     needs: [build_wheels, build_sdist]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           # unpacks default artifact into dist/
           # if `name: artifact` is omitted, the action will create extra parent dir
@@ -77,19 +81,15 @@ jobs:
           path: dist
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
-        # PRODUCTION PYPI: tags not containing dev.
-        # Note that the tags are already validated to control the running of
-        # this workflow!
-        if: "!contains(github.ref, 'dev')"
+        # Deploy releases to pypi.
+        if: github.event_name == 'release' && github.event.action == 'released'
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
 
       - uses: pypa/gh-action-pypi-publish@v1.5.0
-        # Deploy tags containing 'dev' to test pypi.
-        # Note that the tags are already validated to control the running of
-        # this workflow!
-        if: contains(github.ref, 'dev')
+        # Deploy pre-releases to test pypi.
+        if: github.event_name == 'release' && github.event.action == 'prereleased'
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
